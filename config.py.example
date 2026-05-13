@@ -1,0 +1,23 @@
+# ───────────────────────────────────────────────────────────────────────
+# Konfigurimi i API keys — kopjo këtë file si `config.py` dhe plotëso.
+# Të gjitha key-at janë opsionale; aplikacioni funksionon pa to (me
+# funksione të kufizuara).
+# ───────────────────────────────────────────────────────────────────────
+
+# Twelve Data API (opsionale, për live price fallback) — falas: twelvedata.com
+TWELVE_DATA_API_KEY = ""
+
+# Anthropic API key (opsionale, për Chart Screenshot Analyzer me Claude)
+# Merr nga: https://console.anthropic.com/settings/keys
+ANTHROPIC_API_KEY = ""
+
+# Google Gemini API key (FALAS, alternativë e Claude për chart analysis)
+# Merr falas nga: https://aistudio.google.com/apikey
+GEMINI_API_KEY = ""
+
+# Telegram Bot (për notifications në telefon)
+# 1. Krijoj bot me @BotFather në Telegram
+# 2. Dërgo /start tek bot-i yt
+# 3. Hap: https://api.telegram.org/bot<TOKEN>/getUpdates për të marrë Chat ID
+TELEGRAM_BOT_TOKEN = ""
+TELEGRAM_CHAT_ID   = ""

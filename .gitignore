@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Models (large binary files, regenerated on first run)
+*.pkl
+
+# Databases (contain personal trading data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+stream_*.log
+
+# Secrets / config with API keys
+config.py
+.env
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test artifacts
+_test_*.py
+.pytest_cache/
+
+# Streamlit
+.streamlit/credentials.toml
+
+# Claude / agent artifacts
+.claude/
