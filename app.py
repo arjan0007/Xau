@@ -93,33 +93,178 @@ def _require_login():
     st.markdown(
         """
 <style>
-html, body, [data-testid="stAppViewContainer"] {
-  background: linear-gradient(180deg, #06070b 0%, #0a0d14 100%) !important;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+#MainMenu, footer, header[data-testid="stHeader"], [data-testid="stToolbar"],
+[data-testid="stDecoration"], [data-testid="stStatusWidget"] {
+  display: none !important;
 }
-.login-wrap {
-  max-width: 420px;
-  margin: 14vh auto 0 auto;
-  padding: 28px;
+
+html, body, .stApp, [data-testid="stAppViewContainer"] {
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(180deg, #05070c 0%, #080b12 52%, #05070a 100%) !important;
+  background-size: 42px 42px, 42px 42px, auto !important;
+  color: #e9edf6 !important;
+  font-family: Inter, system-ui, sans-serif !important;
+}
+
+.block-container {
+  max-width: 560px !important;
+  padding-top: 10vh !important;
+}
+
+.login-shell {
+  max-width: 520px;
+  margin: 0 auto;
   border: 1px solid rgba(245,200,66,0.24);
-  border-radius: 14px;
-  background: rgba(22,27,40,0.78);
+  border-bottom: 0;
+  border-radius: 18px 18px 0 0;
+  background:
+    linear-gradient(135deg, rgba(245,200,66,0.15), rgba(255,255,255,0.02) 46%, rgba(78,163,255,0.06)),
+    rgba(14,18,29,0.92);
+  padding: 28px 28px 22px;
 }
-.login-title {
-  font-size: 28px;
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.login-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 25%, #fff4a3 0%, #f5c842 42%, #9e7620 100%);
+  color: #070910;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 26px;
   font-weight: 800;
+  box-shadow: 0 14px 32px rgba(245,200,66,0.2);
+}
+
+.login-title {
+  font-family: "Space Grotesk", Inter, sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0 !important;
   color: #fff;
 }
+
+.login-title span { color: #f5c842; }
+
 .login-sub {
-  margin-top: 6px;
-  color: #8a93a6;
-  letter-spacing: 0.08em;
+  margin-top: 8px;
+  color: #93a0b8;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 11px;
+  font-weight: 700;
+}
+
+.login-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.login-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(245,200,66,0.2);
+  border-radius: 999px;
+  color: #c4cbe0;
+  background: rgba(255,255,255,0.04);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.login-chip.gold { color: #f5c842; }
+
+[data-testid="stForm"] {
+  max-width: 520px;
+  margin: 0 auto !important;
+  padding: 24px 28px 28px;
+  border: 1px solid rgba(245,200,66,0.24);
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+  background: rgba(10,13,22,0.88);
+  box-shadow: 0 26px 70px rgba(0,0,0,0.38);
+}
+
+[data-testid="stForm"] label p {
+  color: #9aa5bc !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+[data-testid="stForm"] div[data-baseweb="input"] {
+  background: rgba(7,10,17,0.92) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 12px !important;
+  min-height: 48px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+[data-testid="stForm"] div[data-baseweb="input"]:focus-within {
+  border-color: rgba(245,200,66,0.72) !important;
+  box-shadow: 0 0 0 3px rgba(245,200,66,0.12) !important;
+}
+
+[data-testid="stForm"] input {
+  color: #eef2fb !important;
+  -webkit-text-fill-color: #eef2fb !important;
+  caret-color: #f5c842 !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 14px !important;
+}
+
+[data-testid="stForm"] button {
+  min-height: 48px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #ffe27a, #f5c842 48%, #b8902f) !important;
+  color: #080b12 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 16px 34px rgba(245,200,66,0.18);
+}
+
+[data-testid="stForm"] button:hover {
+  filter: brightness(1.04);
+  box-shadow: 0 18px 42px rgba(245,200,66,0.26);
+}
+
+@media (max-width: 640px) {
+  .block-container { padding: 6vh 18px 0 !important; }
+  .login-shell, [data-testid="stForm"] { max-width: 100%; padding-left: 20px; padding-right: 20px; }
+  .login-title { font-size: 25px; }
 }
 </style>
-<div class="login-wrap">
-  <div class="login-title">XAUUSD Predictor</div>
-  <div class="login-sub">Private access</div>
+<div class="login-shell">
+  <div class="login-brand">
+    <div class="login-logo">Au</div>
+    <div>
+      <div class="login-title">XAUUSD <span>Predictor</span></div>
+      <div class="login-sub">Private trading desk</div>
+    </div>
+  </div>
+  <div class="login-meta">
+    <div class="login-chip gold">Secure Access</div>
+    <div class="login-chip">Live Markets</div>
+    <div class="login-chip">AI Ensemble</div>
+  </div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -128,7 +273,7 @@ html, body, [data-testid="stAppViewContainer"] {
     with st.form("login_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Hyr", use_container_width=True)
+        submitted = st.form_submit_button("Hyr ne dashboard", use_container_width=True)
 
     if submitted:
         user_ok = hmac.compare_digest(username, expected_user)
