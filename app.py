@@ -986,6 +986,17 @@ df_for_atr = ml.add_features(df.copy()).dropna()
 _atr_now   = float(df_for_atr["atr"].iloc[-1]) if "atr" in df_for_atr.columns else 5.0
 _sltp      = rt.suggest_sl_tp(current_price, signal, _atr_now)
 
+# Keep the next-price forecast on the same side as the final live signal.
+# The regressor is trained on candle closes, while current_price may come from
+# the live spot feed. Re-clamp after fetching the live price to avoid showing a
+# bullish target next to a SELL signal, or vice versa.
+if predicted_price is not None and signal in ("BUY", "SELL"):
+    _live_gap = max(_atr_now * 0.6, current_price * 0.0005, 0.5)
+    if signal == "SELL" and predicted_price >= current_price:
+        predicted_price = round(current_price - _live_gap, 2)
+    elif signal == "BUY" and predicted_price <= current_price:
+        predicted_price = round(current_price + _live_gap, 2)
+
 # ── 🤖 Robot Brain: log prediction, evaluate outcomes, auto-tune ──────────────
 if robot_on:
     # 1. Evaluate any pending predictions using recent candles
