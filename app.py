@@ -210,11 +210,17 @@ html, body, .stApp, [data-testid="stAppViewContainer"] {
 }
 
 [data-testid="stForm"] div[data-baseweb="input"] {
-  background: rgba(7,10,17,0.92) !important;
+  background: #080c14 !important;
   border: 1px solid rgba(255,255,255,0.12) !important;
   border-radius: 12px !important;
   min-height: 48px !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+[data-testid="stForm"] div[data-baseweb="base-input"],
+[data-testid="stForm"] div[data-baseweb="input"] > div,
+[data-testid="stForm"] div[data-baseweb="input"] input {
+  background: #080c14 !important;
 }
 
 [data-testid="stForm"] div[data-baseweb="input"]:focus-within {
@@ -228,6 +234,23 @@ html, body, .stApp, [data-testid="stAppViewContainer"] {
   caret-color: #f5c842 !important;
   font-family: "JetBrains Mono", monospace !important;
   font-size: 14px !important;
+}
+
+[data-testid="stForm"] input::placeholder {
+  color: #6f7b92 !important;
+  -webkit-text-fill-color: #6f7b92 !important;
+}
+
+[data-testid="stForm"] input::selection {
+  background: rgba(245,200,66,0.28) !important;
+  color: #fff !important;
+}
+
+[data-testid="stForm"] button[title],
+[data-testid="stForm"] [data-testid="stTextInputRootElement"] button {
+  background: #f5c842 !important;
+  color: #080b12 !important;
+  border-radius: 0 12px 12px 0 !important;
 }
 
 [data-testid="stForm"] button {
