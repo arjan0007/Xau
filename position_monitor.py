@@ -14,8 +14,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional
+from storage import data_path
 
-DB_PATH = "C:/Users/User/Desktop/xauusd/active_positions.db"
+DB_PATH = data_path("active_positions.db")
 
 
 # ════════════════════════════════════════════════════════════════════════════

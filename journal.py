@@ -6,8 +6,9 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import os
+from storage import data_path
 
-DB_PATH = "C:/Users/User/Desktop/xauusd/trading_journal.db"
+DB_PATH = data_path("trading_journal.db")
 
 
 def init_db():

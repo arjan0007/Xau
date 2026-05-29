@@ -17,8 +17,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional
+from storage import data_path
 
-DB_PATH = "C:/Users/User/Desktop/xauusd/bot_brain.db"
+DB_PATH = data_path("bot_brain.db")
 
 
 def _conn():

@@ -12,8 +12,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional
+from storage import data_path
 
-DB_PATH = "C:/Users/User/Desktop/xauusd/paper_trading.db"
+DB_PATH = data_path("paper_trading.db")
 INITIAL_BALANCE = 10000.0
 
 
