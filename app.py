@@ -28,7 +28,33 @@ import correlations as corr
 import seasonality as seas
 import cot_report as cot
 import journal as jrn
-from config import ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+
+try:
+    from config import (
+        ANTHROPIC_API_KEY as _CONFIG_ANTHROPIC_API_KEY,
+        TELEGRAM_BOT_TOKEN as _CONFIG_TELEGRAM_BOT_TOKEN,
+        TELEGRAM_CHAT_ID as _CONFIG_TELEGRAM_CHAT_ID,
+    )
+except Exception:
+    _CONFIG_ANTHROPIC_API_KEY = ""
+    _CONFIG_TELEGRAM_BOT_TOKEN = ""
+    _CONFIG_TELEGRAM_CHAT_ID = ""
+
+
+def _load_secret(name: str, fallback: str = "") -> str:
+    value = os.environ.get(name, "")
+    if value:
+        return value
+    try:
+        value = st.secrets.get(name, "")
+    except Exception:
+        value = ""
+    return value or fallback
+
+
+ANTHROPIC_API_KEY = _load_secret("ANTHROPIC_API_KEY", _CONFIG_ANTHROPIC_API_KEY)
+TELEGRAM_BOT_TOKEN = _load_secret("TELEGRAM_BOT_TOKEN", _CONFIG_TELEGRAM_BOT_TOKEN)
+TELEGRAM_CHAT_ID = _load_secret("TELEGRAM_CHAT_ID", _CONFIG_TELEGRAM_CHAT_ID)
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -537,10 +563,10 @@ else:
 _default_interval_idx = {"scalping": 0, "day_trading": 1, "conservative": 2}.get(_new_mode, 1)
 
 interval_map = {
-    "15 minuta (15M)": ("15m",  "30d"),
-    "1 orë (1H)":      ("1h",   "60d"),
-    "4 orë (4H)":      ("4h",   "120d"),
-    "1 ditë (1D)":     ("1d",   "730d"),
+    "15 minuta (15M)": ("15m",  "14d"),
+    "1 orë (1H)":      ("1h",   "21d"),
+    "4 orë (4H)":      ("4h",   "60d"),
+    "1 ditë (1D)":     ("1d",   "365d"),
 }
 interval_label = st.sidebar.selectbox("Intervali", list(interval_map.keys()), index=_default_interval_idx)
 interval, period = interval_map[interval_label]
@@ -621,14 +647,8 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 with st.sidebar.expander("⚙ Konfiguro Telegram", expanded=False):
-    _tg_default_tok = ""
-    _tg_default_chat = ""
-    try:
-        import config as cfg
-        _tg_default_tok = getattr(cfg, "TELEGRAM_BOT_TOKEN", "") or ""
-        _tg_default_chat = getattr(cfg, "TELEGRAM_CHAT_ID", "") or ""
-    except Exception:
-        pass
+    _tg_default_tok = TELEGRAM_BOT_TOKEN or ""
+    _tg_default_chat = TELEGRAM_CHAT_ID or ""
     tg_token = st.text_input("Bot Token", value=_tg_default_tok, type="password",
                               help="Merr nga @BotFather në Telegram")
     tg_chat = st.text_input("Chat ID", value=_tg_default_chat,
@@ -872,6 +892,8 @@ change_pct = change / prev_price * 100 if prev_price else 0
 # ── Trade-Entry Popup (BUY/SELL with Entry, SL, TP) ───────────────────────────
 # Detect transition: any change INTO a BUY/SELL state triggers the popup.
 _signal_changed = alrt.check_signal_changed(signal)
+if _signal_changed:
+    st.session_state["trade_alert_seq"] = st.session_state.get("trade_alert_seq", 0) + 1
 _should_popup   = _signal_changed and signal in ("BUY", "SELL")
 
 # Compute SL / TP using ATR (already in features)
@@ -954,7 +976,9 @@ if tg_send_signals and 'tg_token' in dir() and tg_token and tg_chat and _signal_
 
 # Persist trade plan in session so popup survives reruns
 if _should_popup:
+    _trade_alert_key = f"{st.session_state.get('trade_alert_seq', 0)}:{signal}"
     st.session_state["trade_alert"] = {
+        "key":        _trade_alert_key,
         "signal":     signal,
         "entry":      round(current_price, 2),
         "sl":         _sltp["stop_loss"],
@@ -965,6 +989,13 @@ if _should_popup:
         "time":       datetime.now().strftime("%d %b %Y %H:%M:%S"),
         "shown":      False,
     }
+
+
+def _dismiss_trade_alert():
+    alert = st.session_state.get("trade_alert")
+    if alert:
+        st.session_state["trade_alert_seen_key"] = alert.get("key")
+    st.session_state.pop("trade_alert", None)
 
 # ── Alert logic (sound + email) ───────────────────────────────────────────────
 if _signal_changed:
@@ -980,6 +1011,9 @@ if _signal_changed:
 
 # ── Show the popup as a modal dialog (st.dialog) ──────────────────────────────
 _alert = st.session_state.get("trade_alert")
+if _alert and _alert.get("key") == st.session_state.get("trade_alert_seen_key"):
+    st.session_state.pop("trade_alert", None)
+    _alert = None
 if _alert and not _alert.get("shown"):
     @st.dialog(f"🚨 Sinjal i Ri — {_alert['signal']}!", width="large")
     def _show_trade_alert():
@@ -1086,7 +1120,7 @@ Ky nuk është këshillë financiare.
         st.markdown("<br>", unsafe_allow_html=True)
         b1, b2 = st.columns(2)
         if b1.button("✅ E pashë", use_container_width=True, type="primary"):
-            st.session_state["trade_alert"]["shown"] = True
+            _dismiss_trade_alert()
             st.rerun()
         if b2.button("📓 Shkruaj në Journal", use_container_width=True):
             try:
@@ -1099,7 +1133,8 @@ Ky nuk është këshillë financiare.
                 st.success(f"✅ Tregti #{tid} u shtua në Journal me lot 0.1")
             except Exception as e:
                 st.error(f"Gabim: {e}")
-            st.session_state["trade_alert"]["shown"] = True
+            _dismiss_trade_alert()
+            st.rerun()
 
     _show_trade_alert()
 

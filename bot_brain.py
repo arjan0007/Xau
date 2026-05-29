@@ -199,7 +199,7 @@ def get_performance(window: int = 50) -> dict:
     if not rows:
         return {"total_evaluated": 0, "pending": pending, "win_rate": 0,
                 "wins": 0, "losses": 0, "avg_bars": 0, "profit_factor": 0,
-                "lifetime_evaluated": total_count}
+                "current_streak": 0, "lifetime_evaluated": total_count}
 
     wins = sum(1 for r in rows if r[0] == "WIN")
     losses = sum(1 for r in rows if r[0] in ("LOSS", "TIMEOUT"))

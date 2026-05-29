@@ -25,9 +25,9 @@ TRADING_MODES = {
         "label": "🛡 Konservativ (5-10/muaj, ~90% saktësi)",
     },
     "day_trading": {
-        "ml_threshold": 0.52, "confluence_threshold": 2,
-        "lookahead": 6,  "label_atr_mult": 1.3,
-        "label": "⚡ Day Trading (2-3/ditë, ~75% saktësi)",
+        "ml_threshold": 0.58, "confluence_threshold": 2,
+        "lookahead": 6,  "label_atr_mult": 1.2,
+        "label": "⚡ Day Trading (2-4/ditë, sinjale për sot)",
     },
     "scalping": {
         "ml_threshold": 0.45, "confluence_threshold": 1,
@@ -417,6 +417,8 @@ def predict_latest(df: pd.DataFrame, model, scaler):
     # When the 4 sub-models unanimously agree on a non-HOLD direction, that
     # consensus is stronger than the confluence indicators. Override the
     # confluence requirement so we don't lose obvious signals to disagreement.
+    agree_sell = agree_buy = 0
+    unanimous_sell = unanimous_buy = False
     try:
         sub_votes = []
         for _name, est in model.named_estimators_.items():
@@ -427,26 +429,30 @@ def predict_latest(df: pd.DataFrame, model, scaler):
         unanimous_sell = agree_sell == n_sub and n_sub >= 3
         unanimous_buy  = agree_buy  == n_sub and n_sub >= 3
     except Exception:
-        unanimous_sell = unanimous_buy = False
+        pass
 
-    # Final signal:
-    #   • Unanimous sub-model consensus → trust it (override confluence)
-    #   • Else BUY/SELL only when ML proba ≥ threshold AND confluence agrees
-    if unanimous_sell and max_p >= HIGH_CONF_THRESHOLD * 0.85:
+    # Final signal — Day Trading gates calibrated for 2-4 signals/day:
+    sell_p = float(proba[classes.index(0)] * 100) if 0 in classes else 0.0
+    buy_p  = float(proba[classes.index(2)] * 100) if 2 in classes else 0.0
+    hold_p = float(proba[classes.index(1)] * 100) if 1 in classes else 0.0
+    sell_dom = sell_p - hold_p   # how much SELL beats HOLD
+    buy_dom  = buy_p  - hold_p
+
+    # FIRE only when: unanimous sub-models AND ensemble proba >= threshold
+    # AND the direction strongly dominates HOLD (≥15pp).
+    if unanimous_sell and max_p >= HIGH_CONF_THRESHOLD and sell_dom >= 15:
         final_pred = 0
-        # Confidence = probability of SELL class, with a small consensus bonus
-        sell_p = float(proba[classes.index(0)] * 100) if 0 in classes else max_p * 100
-        final_conf = min(sell_p + 10, 95)
-    elif unanimous_buy and max_p >= HIGH_CONF_THRESHOLD * 0.85:
+        final_conf = min(sell_p + 5, 92)
+    elif unanimous_buy and max_p >= HIGH_CONF_THRESHOLD and buy_dom >= 15:
         final_pred = 2
-        buy_p = float(proba[classes.index(2)] * 100) if 2 in classes else max_p * 100
-        final_conf = min(buy_p + 10, 95)
+        final_conf = min(buy_p + 5, 92)
+    # Backup: ML+confluence agree on direction (the original path)
     elif (max_p >= HIGH_CONF_THRESHOLD and ml_pred != 1 and ml_pred == conf_pred):
         final_pred = ml_pred
         final_conf = max_p * 100
     else:
         final_pred = 1
-        final_conf = float(proba[classes.index(1)] * 100) if 1 in classes else (1 - max_p) * 100
+        final_conf = hold_p if hold_p > 0 else (1 - max_p) * 100
 
     return label_map[final_pred], round(final_conf, 1), proba, classes
 
