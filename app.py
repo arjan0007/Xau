@@ -8,6 +8,9 @@ import requests
 import time
 import os
 import hmac
+import base64
+import hashlib
+import json
 
 import model as ml
 import technical as tech
@@ -78,6 +81,69 @@ def _load_first_secret(*names: str) -> str:
     return ""
 
 
+_AUTH_QUERY_KEY = "xau_auth"
+_AUTH_TOKEN_DAYS = 30
+
+
+def _b64_url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _b64_url_decode(raw: str) -> bytes:
+    padding = "=" * (-len(raw) % 4)
+    return base64.urlsafe_b64decode((raw + padding).encode("ascii"))
+
+
+def _auth_signing_key(expected_user: str, expected_pass: str) -> bytes:
+    return hashlib.sha256(f"{expected_user}:{expected_pass}:xauusd-auth-v1".encode("utf-8")).digest()
+
+
+def _make_auth_token(username: str, expected_user: str, expected_pass: str) -> str:
+    payload = {
+        "u": username,
+        "exp": int(time.time() + (_AUTH_TOKEN_DAYS * 24 * 60 * 60)),
+    }
+    payload_b64 = _b64_url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    sig = hmac.new(_auth_signing_key(expected_user, expected_pass), payload_b64.encode("ascii"), hashlib.sha256).digest()
+    return f"{payload_b64}.{_b64_url_encode(sig)}"
+
+
+def _verify_auth_token(token: str, expected_user: str, expected_pass: str) -> bool:
+    try:
+        payload_b64, sig_b64 = token.split(".", 1)
+        expected_sig = hmac.new(
+            _auth_signing_key(expected_user, expected_pass),
+            payload_b64.encode("ascii"),
+            hashlib.sha256,
+        ).digest()
+        provided_sig = _b64_url_decode(sig_b64)
+        if not hmac.compare_digest(provided_sig, expected_sig):
+            return False
+
+        payload = json.loads(_b64_url_decode(payload_b64).decode("utf-8"))
+        if int(payload.get("exp", 0)) < int(time.time()):
+            return False
+        return hmac.compare_digest(str(payload.get("u", "")), expected_user)
+    except Exception:
+        return False
+
+
+def _get_auth_query_token() -> str:
+    token = st.query_params.get(_AUTH_QUERY_KEY, "")
+    if isinstance(token, list):
+        token = token[0] if token else ""
+    return str(token or "")
+
+
+def _set_auth_query_token(token: str):
+    st.query_params[_AUTH_QUERY_KEY] = token
+
+
+def _clear_auth_query_token():
+    if _AUTH_QUERY_KEY in st.query_params:
+        del st.query_params[_AUTH_QUERY_KEY]
+
+
 def _require_login():
     expected_user = _load_first_secret("XAUUSD_USERNAME", "APP_USERNAME", "AUTH_USERNAME") or _CONFIG_XAUUSD_USERNAME
     expected_pass = _load_first_secret("XAUUSD_PASSWORD", "APP_PASSWORD", "AUTH_PASSWORD") or _CONFIG_XAUUSD_PASSWORD
@@ -89,6 +155,14 @@ def _require_login():
 
     if st.session_state.get("auth_ok"):
         return
+
+    auth_token = _get_auth_query_token()
+    if auth_token:
+        if _verify_auth_token(auth_token, expected_user, expected_pass):
+            st.session_state["auth_ok"] = True
+            st.session_state["auth_user"] = expected_user
+            return
+        _clear_auth_query_token()
 
     st.markdown(
         """
@@ -304,6 +378,7 @@ html, body, .stApp, [data-testid="stAppViewContainer"] {
         if user_ok and pass_ok:
             st.session_state["auth_ok"] = True
             st.session_state["auth_user"] = username
+            _set_auth_query_token(_make_auth_token(username, expected_user, expected_pass))
             st.rerun()
         else:
             st.error("Username ose password i pasakte.")
@@ -741,6 +816,7 @@ st.sidebar.markdown("""
 if st.sidebar.button("Dil", use_container_width=True):
     st.session_state.pop("auth_ok", None)
     st.session_state.pop("auth_user", None)
+    _clear_auth_query_token()
     st.rerun()
 
 # ── Navigation ────────────────────────────────────────────────────────────────
