@@ -1,5 +1,4 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -29,6 +28,7 @@ import correlations as corr
 import seasonality as seas
 import cot_report as cot
 import journal as jrn
+from market_data import fetch_data as fetch_market_data
 
 try:
     from config import (
@@ -804,9 +804,6 @@ _new_mode = _mode_options[_mode_label]
 if _new_mode != _prev_mode:
     ml.set_trading_mode(_new_mode)
     st.session_state["trading_mode"] = _new_mode
-    # Force retrain on mode switch — labels change
-    if os.path.exists(ml.MODEL_PATH):
-        os.remove(ml.MODEL_PATH)
     st.sidebar.success(f"✅ Modaliteti: {_mode_label.split(' (')[0]}. Po ritrajnoj modelin...")
     st.rerun()
 else:
@@ -823,6 +820,8 @@ interval_map = {
 }
 interval_label = st.sidebar.selectbox("Intervali", list(interval_map.keys()), index=_default_interval_idx)
 interval, period = interval_map[interval_label]
+current_model_tag = f"{_new_mode}_{interval}"
+ml.set_model_tag(current_model_tag)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔔 Alerts")
@@ -951,50 +950,7 @@ st.sidebar.caption("XAUUSD AI · RF + GBM + MLP Ensemble")
 # ── Data fetching ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=60)
 def fetch_data(interval: str, period: str) -> pd.DataFrame:
-    """Fetch XAUUSD spot OHLC.
-    Uses Gold spot (XAUUSD=X) — same instrument as the OANDA chart.
-    Falls back to Gold Futures (GC=F) only if spot data is empty.
-
-    yfinance does NOT support `4h` natively — we fetch `60m` and resample.
-    """
-    # yfinance-compatible interval (resample for 4h)
-    needs_4h_resample = interval == "4h"
-    fetch_interval = "60m" if needs_4h_resample else interval
-    fetch_period   = "120d"  if needs_4h_resample else period
-
-    df = pd.DataFrame()
-    # GC=F (Gold Futures) tracks XAUUSD spot within ~$5 and is reliably available on yfinance.
-    # Live spot price for cards comes from gold-api.com — chart structure from futures is fine.
-    for symbol in ("GC=F", "XAUUSD=X"):
-        try:
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period=fetch_period, interval=fetch_interval)
-            if not df.empty and len(df) >= 50:
-                break
-        except Exception:
-            continue
-
-    if df.empty:
-        return df
-
-    df.index = pd.to_datetime(df.index)
-
-    # Resample 60m → 4h if needed
-    if needs_4h_resample:
-        df = df.resample("4h").agg({
-            "Open":  "first",
-            "High":  "max",
-            "Low":   "min",
-            "Close": "last",
-            "Volume":"sum",
-        }).dropna()
-
-    # Spot FX has no real volume — synthesize from price range so indicators work
-    if "Volume" not in df.columns or df["Volume"].sum() == 0:
-        df["Volume"] = (df["High"] - df["Low"]).rolling(3, min_periods=1).mean() * 1000
-
-    df = df[["Open", "High", "Low", "Close", "Volume"]].dropna()
-    return df
+    return fetch_market_data(interval, period)
 
 
 @st.cache_data(ttl=3)
@@ -1023,7 +979,7 @@ def fetch_live_price(api_key: str | None = None) -> dict | None:
 
 
 @st.cache_data(ttl=300)
-def fetch_multi_tf(api_key: str | None = None) -> dict:
+def fetch_multi_tf(mode: str, active_model_tag: str, api_key: str | None = None) -> dict:
     """Fetch signals for multiple timeframes."""
     intervals = {
         "15M": ("15m", "30d"),
@@ -1034,6 +990,7 @@ def fetch_multi_tf(api_key: str | None = None) -> dict:
     results = {}
     for label, (iv, per) in intervals.items():
         try:
+            ml.set_model_tag(f"{mode}_{iv}")
             df_tf = fetch_data(iv, per)
             if len(df_tf) < 50:
                 continue
@@ -1042,6 +999,7 @@ def fetch_multi_tf(api_key: str | None = None) -> dict:
             results[label] = {"signal": sig, "confidence": conf}
         except Exception:
             results[label] = {"signal": "—", "confidence": 0}
+    ml.set_model_tag(active_model_tag)
     return results
 
 
@@ -1063,11 +1021,20 @@ if df.empty:
     st.error("Nuk u morën të dhënat. Provo sërish.")
     st.stop()
 
-if retrain or "model" not in st.session_state or st.session_state.get("interval") != interval:
+if (
+    retrain
+    or "model" not in st.session_state
+    or st.session_state.get("interval") != interval
+    or st.session_state.get("model_tag") != current_model_tag
+):
     with st.spinner("Duke trajnuar modelin (RF + GBM + MLP)..."):
-        mdl, scaler, acc = ml.train(df)
+        if retrain:
+            mdl, scaler, acc = ml.train(df)
+        else:
+            mdl, scaler, acc = ml.load_or_train(df)
         st.session_state.update({"model": mdl, "scaler": scaler,
                                   "accuracy": acc, "interval": interval,
+                                  "model_tag": current_model_tag,
                                   "last_train_ts": _time_mod.time()})
 else:
     mdl    = st.session_state["model"]
@@ -2534,7 +2501,7 @@ elif page == "Chart Avancuar":
     st.markdown("---")
     st.markdown("### 🕐 Sinjale Multi-Timeframe")
     with st.spinner("Duke llogaritur..."):
-        mtf = fetch_multi_tf()
+        mtf = fetch_multi_tf(ml.ACTIVE_MODE, current_model_tag)
 
     mtf_cols = st.columns(len(mtf))
     for i, (tf_label, tf_data) in enumerate(mtf.items()):

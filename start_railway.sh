@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+
+python background_trainer.py &
+exec streamlit run app.py --server.address=0.0.0.0 --server.port="${PORT:-8501}" --server.headless=true

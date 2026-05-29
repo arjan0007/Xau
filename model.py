@@ -9,11 +9,27 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 import joblib
 import os
+import re
+from storage import data_path
 
-MODEL_PATH = "xauusd_model.pkl"
-SCALER_PATH = "xauusd_scaler.pkl"
-PRICE_MODEL_PATH = "xauusd_price_model.pkl"
-PRICE_SCALER_PATH = "xauusd_price_scaler.pkl"
+MODEL_PATH = ""
+SCALER_PATH = ""
+PRICE_MODEL_PATH = ""
+PRICE_SCALER_PATH = ""
+
+
+def set_model_tag(tag: str = "default"):
+    """Select where model artifacts are stored for the active mode/interval."""
+    global MODEL_PATH, SCALER_PATH, PRICE_MODEL_PATH, PRICE_SCALER_PATH
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(tag or "default")).strip("_") or "default"
+    prefix = "xauusd" if safe == "default" else f"xauusd_{safe}"
+    MODEL_PATH = data_path(f"{prefix}_model.pkl")
+    SCALER_PATH = data_path(f"{prefix}_scaler.pkl")
+    PRICE_MODEL_PATH = data_path(f"{prefix}_price_model.pkl")
+    PRICE_SCALER_PATH = data_path(f"{prefix}_price_scaler.pkl")
+
+
+set_model_tag(os.environ.get("XAUUSD_MODEL_TAG", "default"))
 
 # ── Trading mode thresholds ───────────────────────────────────────────────────
 # Conservative: ~5-10 signals/month, 88-90% precision

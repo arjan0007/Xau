@@ -20,6 +20,7 @@ env/
 # Logs
 *.log
 stream_*.log
+training_status.json
 
 # Secrets / config with API keys
 config.py
