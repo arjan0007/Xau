@@ -1079,7 +1079,7 @@ if _should_popup:
 def _dismiss_trade_alert():
     alert = st.session_state.get("trade_alert")
     if alert:
-        st.session_state["trade_alert_seen_key"] = alert.get("key")
+        st.session_state["trade_alert_dismissed_key"] = alert.get("key")
     st.session_state.pop("trade_alert", None)
 
 # ── Alert logic (sound + email) ───────────────────────────────────────────────
@@ -1096,13 +1096,15 @@ if _signal_changed:
 
 # ── Show the popup as a modal dialog (st.dialog) ──────────────────────────────
 _alert = st.session_state.get("trade_alert")
-if _alert and _alert.get("key") == st.session_state.get("trade_alert_seen_key"):
+if _alert and _alert.get("key") == st.session_state.get("trade_alert_dismissed_key"):
     st.session_state.pop("trade_alert", None)
     _alert = None
 if _alert and not _alert.get("shown"):
     @st.dialog(f"🚨 Sinjal i Ri — {_alert['signal']}!", width="large")
     def _show_trade_alert():
-        a = st.session_state["trade_alert"]
+        a = st.session_state.get("trade_alert")
+        if not a or a.get("key") == st.session_state.get("trade_alert_dismissed_key"):
+            st.rerun(scope="app")
         sig_color = "#00e676" if a["signal"] == "BUY" else "#ff3b5c"
         sig_arrow = "▲" if a["signal"] == "BUY" else "▼"
         rr        = abs(a["tp1"] - a["entry"]) / max(abs(a["entry"] - a["sl"]), 1e-6)
@@ -1206,7 +1208,7 @@ Ky nuk është këshillë financiare.
         b1, b2 = st.columns(2)
         if b1.button("✅ E pashë", use_container_width=True, type="primary"):
             _dismiss_trade_alert()
-            st.rerun()
+            st.rerun(scope="app")
         if b2.button("📓 Shkruaj në Journal", use_container_width=True):
             try:
                 tid = jrn.add_trade(
@@ -1219,7 +1221,7 @@ Ky nuk është këshillë financiare.
             except Exception as e:
                 st.error(f"Gabim: {e}")
             _dismiss_trade_alert()
-            st.rerun()
+            st.rerun(scope="app")
 
     _show_trade_alert()
 
