@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 import time
 import os
+import hmac
 
 import model as ml
 import technical as tech
@@ -34,11 +35,15 @@ try:
         ANTHROPIC_API_KEY as _CONFIG_ANTHROPIC_API_KEY,
         TELEGRAM_BOT_TOKEN as _CONFIG_TELEGRAM_BOT_TOKEN,
         TELEGRAM_CHAT_ID as _CONFIG_TELEGRAM_CHAT_ID,
+        XAUUSD_USERNAME as _CONFIG_XAUUSD_USERNAME,
+        XAUUSD_PASSWORD as _CONFIG_XAUUSD_PASSWORD,
     )
 except Exception:
     _CONFIG_ANTHROPIC_API_KEY = ""
     _CONFIG_TELEGRAM_BOT_TOKEN = ""
     _CONFIG_TELEGRAM_CHAT_ID = ""
+    _CONFIG_XAUUSD_USERNAME = ""
+    _CONFIG_XAUUSD_PASSWORD = ""
 
 
 def _load_secret(name: str, fallback: str = "") -> str:
@@ -63,6 +68,81 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+def _load_first_secret(*names: str) -> str:
+    for name in names:
+        value = _load_secret(name, "")
+        if value:
+            return value
+    return ""
+
+
+def _require_login():
+    expected_user = _load_first_secret("XAUUSD_USERNAME", "APP_USERNAME", "AUTH_USERNAME") or _CONFIG_XAUUSD_USERNAME
+    expected_pass = _load_first_secret("XAUUSD_PASSWORD", "APP_PASSWORD", "AUTH_PASSWORD") or _CONFIG_XAUUSD_PASSWORD
+
+    if not expected_user or not expected_pass:
+        st.error("Login nuk eshte konfiguruar.")
+        st.info("Vendos XAUUSD_USERNAME dhe XAUUSD_PASSWORD te Railway Variables, pastaj bej redeploy.")
+        st.stop()
+
+    if st.session_state.get("auth_ok"):
+        return
+
+    st.markdown(
+        """
+<style>
+html, body, [data-testid="stAppViewContainer"] {
+  background: linear-gradient(180deg, #06070b 0%, #0a0d14 100%) !important;
+}
+.login-wrap {
+  max-width: 420px;
+  margin: 14vh auto 0 auto;
+  padding: 28px;
+  border: 1px solid rgba(245,200,66,0.24);
+  border-radius: 14px;
+  background: rgba(22,27,40,0.78);
+}
+.login-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+}
+.login-sub {
+  margin-top: 6px;
+  color: #8a93a6;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+</style>
+<div class="login-wrap">
+  <div class="login-title">XAUUSD Predictor</div>
+  <div class="login-sub">Private access</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Hyr", use_container_width=True)
+
+    if submitted:
+        user_ok = hmac.compare_digest(username, expected_user)
+        pass_ok = hmac.compare_digest(password, expected_pass)
+        if user_ok and pass_ok:
+            st.session_state["auth_ok"] = True
+            st.session_state["auth_user"] = username
+            st.rerun()
+        else:
+            st.error("Username ose password i pasakte.")
+    st.stop()
+
+
+_require_login()
 
 st.markdown("""
 <style>
@@ -489,6 +569,11 @@ st.sidebar.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+if st.sidebar.button("Dil", use_container_width=True):
+    st.session_state.pop("auth_ok", None)
+    st.session_state.pop("auth_user", None)
+    st.rerun()
 
 # ── Navigation ────────────────────────────────────────────────────────────────
 PAGES = [

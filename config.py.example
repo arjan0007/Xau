@@ -4,6 +4,10 @@
 # funksione të kufizuara).
 # ───────────────────────────────────────────────────────────────────────
 
+# Login per app-in (ne Railway vendosi si Variables)
+XAUUSD_USERNAME = ""
+XAUUSD_PASSWORD = ""
+
 # Twelve Data API (opsionale, për live price fallback) — falas: twelvedata.com
 TWELVE_DATA_API_KEY = ""
 
