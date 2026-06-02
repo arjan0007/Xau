@@ -1302,6 +1302,12 @@ def _dismiss_trade_alert():
     alert = st.session_state.get("trade_alert")
     if alert:
         st.session_state["trade_alert_dismissed_key"] = alert.get("key")
+        # Also mark shown=True as a belt-and-suspenders against the dialog
+        # being re-rendered before the rerun propagates.
+        alert["shown"] = True
+        st.session_state["trade_alert"] = alert
+    # Then fully clear the alert so the show-check at the top of the
+    # next run finds nothing to display.
     st.session_state.pop("trade_alert", None)
 
 # ── Alert logic (sound + email) ───────────────────────────────────────────────
@@ -1428,10 +1434,13 @@ Ky nuk është këshillë financiare.
 
         st.markdown("<br>", unsafe_allow_html=True)
         b1, b2 = st.columns(2)
-        if b1.button("✅ E pashë", use_container_width=True, type="primary"):
+        # NOTE: st.dialog needs an explicit scope="app" rerun to close the
+        # modal; a plain st.rerun() inside the dialog only re-runs the dialog
+        # body itself and leaves the overlay on screen.
+        if b1.button("✅ E pashë", use_container_width=True, type="primary", key="dlg_seen"):
             _dismiss_trade_alert()
             st.rerun(scope="app")
-        if b2.button("📓 Shkruaj në Journal", use_container_width=True):
+        if b2.button("📓 Shkruaj në Journal", use_container_width=True, key="dlg_journal"):
             try:
                 tid = jrn.add_trade(
                     a["signal"], 0.1, a["entry"],
